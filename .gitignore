@@ -1,7 +1,17 @@
-./express-server/node_modules
-./express-server/dist
-./express-server/.env
-./express-server/.env.local
-./express-server/.env.development
-./express-server/.env.test
-./express-server/.env.production
+# Dependencies
+**/node_modules/
+
+# Environment
+**/.env
+
+# Build
+**/dist/
+**/.vite/
+
+# Logs
+**/logs/
+**/*.log
+
+# OS
+.DS_Store
+Thumbs.db
