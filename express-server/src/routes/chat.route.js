@@ -51,23 +51,42 @@ router.post('/', authenticate, async (req, res) => {
     );
 
     // পুরো history লোড করো context-এর জন্য
+    // const historyResult = await pool.query(
+    //   'SELECT role, content FROM chat_messages WHERE user_id = $1 ORDER BY created_at ASC',
+    //   [userId]
+    // );
+
     const historyResult = await pool.query(
-      'SELECT role, content FROM chat_messages WHERE user_id = $1 ORDER BY created_at ASC',
+      `SELECT role, content FROM chat_messages 
+      WHERE user_id = $1 
+      ORDER BY created_at DESC 
+      LIMIT 6`,
       [userId]
     );
 
     const messages = [
       {
         role: 'system',
-        content: `You are a helpful todo assistant. You have access to tools to manage todos. 
-        Always use tools when user asks about todos. Be concise and friendly.
-        Current user: ${req.user.name}`
+        content: `You are a helpful assistant for managing todos and employees.
+          You have access to tools — always use them when user asks about todos or employees.
+
+          RESPONSE FORMATTING RULES:
+          - Always respond in Markdown format
+          - Use bullet points or numbered lists for multiple items
+          - Use **bold** for names, dates, and important values
+          - Use ## headings when showing grouped data
+          - Keep responses concise and well-structured
+
+          Current user: ${req.user.name}`
       },
-      ...historyResult.rows.map(r => ({ role: r.role, content: r.content }))
+      { role: 'user', content: message }
+      //...historyResult.rows.map(r => ({ role: r.role, content: r.content }))
     ];
 
+    console.log(JSON.stringify(messages))
     let fullResponse = '';
 
+    console.log('User message:', message);
     // Streaming chunks পাঠাও
     await chat(messages, (chunk) => {
       fullResponse += chunk;

@@ -108,7 +108,80 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         },
         required: ['id', 'title']
       }
-    }
+    },
+    {
+      name: 'add_employee',
+      description: 'Add a new employee',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          email: { type: 'string' },
+          department: { type: 'string' },
+          join_date: { type: 'string', description: 'YYYY-MM-DD' },
+          salary: { type: 'number' }
+        },
+        required: ['name', 'email', 'join_date']
+      }
+    },
+    {
+      name: 'get_employees',
+      description: 'Get all employees',
+      inputSchema: { type: 'object', properties: {} }
+    },
+    {
+      name: 'get_increment_due',
+      description: 'Get employees with increment due in a year',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          year: { type: 'number', description: 'Year e.g. 2026' }
+        }
+      }
+    },
+    {
+      name: 'log_attendance',
+      description: 'Log attendance for one or multiple employees',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          employee_ids: {
+            type: 'array',
+            items: { type: 'number' },
+            description: 'List of employee IDs'
+          },
+          date: { type: 'string', description: 'YYYY-MM-DD' },
+          status: { type: 'string', description: 'present, absent, or leave' },
+          reason: { type: 'string' }
+        },
+        required: ['employee_ids', 'date', 'status']
+      }
+    },
+    {
+      name: 'get_attendance_summary',
+      description: 'Get monthly attendance summary for an employee. IMPORTANT: month and year must be plain integers only, no markdown, no bold, no asterisks. Example: month=12, year=2024',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          employee_id: { type: 'number', description: 'Plain integer only. Example: 1' },
+          employee_name: { type: 'string', description: 'Employee name to search' },
+          month: { type: 'number', description: 'Plain integer 1-12. Example: 12. Do NOT use markdown bold or asterisks.' },
+          year: { type: 'number', description: 'Plain 4-digit integer. Example: 2024. Do NOT use markdown bold or asterisks.' }
+        },
+        required: ['month', 'year']
+      }
+    },
+    {
+      name: 'update_increment',
+      description: 'Update increment date for an employee',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          employee_id: { type: 'number' }
+        },
+        required: ['employee_id']
+      }
+    }    
   ]
 }));
 
@@ -166,6 +239,122 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const result = await pool.query(
       'UPDATE todos SET title = $1 WHERE id = $2 RETURNING *',
       [args.title, args.id]
+    );
+    return { content: [{ type: 'text', text: JSON.stringify(result.rows[0], null, 2) }] };
+  }
+
+  if (name === 'add_employee') {
+    const { name: empName, email, department, join_date, salary } = args;
+    const next = new Date(join_date);
+    next.setFullYear(next.getFullYear() + 1);
+    const result = await pool.query(
+      `INSERT INTO employees (name, email, department, join_date, next_increment_date, salary)
+      VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [empName, email, department, join_date, next, salary]
+    );
+    return { content: [{ type: 'text', text: JSON.stringify(result.rows[0], null, 2) }] };
+  }
+
+  if (name === 'get_employees') {
+    const result = await pool.query('SELECT * FROM employees ORDER BY join_date DESC');
+    return { content: [{ type: 'text', text: JSON.stringify(result.rows, null, 2) }] };
+  }
+
+  if (name === 'get_increment_due') {
+    const year = args.year || new Date().getFullYear();
+    const result = await pool.query(
+      `SELECT id, name, department, next_increment_date, salary
+      FROM employees 
+      WHERE EXTRACT(YEAR FROM next_increment_date) = $1
+      ORDER BY next_increment_date ASC`,
+      [year]
+    );
+    return { content: [{ type: 'text', text: JSON.stringify(result.rows, null, 2) }] };
+  }
+
+  if (name === 'log_attendance') {
+  let { employee_ids, employee_id, date, status, reason } = args;
+
+    // employee_id বা employee_ids যেকোনো format handle করো
+    if (!employee_ids) {
+      employee_ids = employee_id;
+    }
+
+    // string হলে parse করো
+    if (typeof employee_ids === 'string') {
+      employee_ids = JSON.parse(employee_ids);
+    }
+
+    // single number হলে array বানাও
+    if (!Array.isArray(employee_ids)) {
+      employee_ids = [employee_ids];
+    }
+    const results = [];
+
+    for (const id of employee_ids) {
+      const result = await pool.query(
+        `INSERT INTO attendance (employee_id, date, status, reason)
+        VALUES ($1,$2,$3,$4)
+        ON CONFLICT (employee_id, date)
+        DO UPDATE SET status=$3, reason=$4
+        RETURNING *`,
+        [id, date, status, reason]
+      );
+      results.push(result.rows[0]);
+    }
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({ logged: results.length, records: results }, null, 2)
+      }]
+    };
+  }
+
+  if (name === 'get_attendance_summary') {
+    const { employee_id, employee_name, month, year } = args;
+    const m = month || new Date().getMonth() + 1;
+    const y = year || new Date().getFullYear();
+
+    let query, params;
+
+    if (employee_name) {
+      query = `
+        SELECT e.name, a.status, COUNT(*) as count,
+          array_agg(json_build_object('date', a.date, 'reason', a.reason)) as details
+        FROM attendance a
+        JOIN employees e ON e.id = a.employee_id
+        WHERE LOWER(e.name) LIKE LOWER($1)
+          AND EXTRACT(MONTH FROM a.date) = $2
+          AND EXTRACT(YEAR FROM a.date) = $3
+        GROUP BY e.name, a.status`;
+      params = [`%${employee_name}%`, m, y];
+    } else {
+      query = `
+        SELECT e.name, a.status, COUNT(*) as count,
+          array_agg(json_build_object('date', a.date, 'reason', a.reason)) as details
+        FROM attendance a
+        JOIN employees e ON e.id = a.employee_id
+        WHERE a.employee_id = $1
+          AND EXTRACT(MONTH FROM a.date) = $2
+          AND EXTRACT(YEAR FROM a.date) = $3
+        GROUP BY e.name, a.status`;
+      params = [employee_id, m, y];
+    }
+
+    const result = await pool.query(query, params);
+    return { content: [{ type: 'text', text: JSON.stringify(result.rows, null, 2) }] };
+  }
+
+  if (name === 'update_increment') {
+    const next = new Date();
+    next.setFullYear(next.getFullYear() + 1);
+    const result = await pool.query(
+      `UPDATE employees SET 
+      last_increment_date = NOW(),
+      next_increment_date = $1
+      WHERE id = $2 RETURNING name, last_increment_date, next_increment_date`,
+      [next, args.employee_id]
     );
     return { content: [{ type: 'text', text: JSON.stringify(result.rows[0], null, 2) }] };
   }

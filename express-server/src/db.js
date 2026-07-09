@@ -30,6 +30,33 @@ const initDB = async () => {
     )
   `);
   console.log('✅ Users table ready');
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS employees (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      department TEXT,
+      join_date DATE NOT NULL,
+      last_increment_date DATE,
+      next_increment_date DATE,
+      salary NUMERIC,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS attendance (
+      id SERIAL PRIMARY KEY,
+      employee_id INTEGER REFERENCES employees(id),
+      date DATE NOT NULL,
+      status TEXT CHECK(status IN ('present','absent','leave')) NOT NULL,
+      reason TEXT,
+      UNIQUE(employee_id, date)
+    )
+  `);
+
+  console.log('✅ HR tables ready');
 };
 
 module.exports = { pool, initDB };

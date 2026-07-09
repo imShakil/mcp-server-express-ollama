@@ -3,6 +3,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Chat from './pages/Chat';
+import Employees from './pages/Employees';
+import Attendance from './pages/Attendance';
 
 const PrivateRoute = ({ children }) => {
   const { user } = useAuth();
@@ -18,6 +20,12 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/chat" element={
             <PrivateRoute><Chat /></PrivateRoute>
+          } />
+          <Route path="/employees" element={
+            <PrivateRoute><Employees /></PrivateRoute>
+          } />
+          <Route path="/attendance/:id" element={
+            <PrivateRoute><Attendance /></PrivateRoute>
           } />
           <Route path="*" element={<Navigate to="/chat" />} />
         </Routes>

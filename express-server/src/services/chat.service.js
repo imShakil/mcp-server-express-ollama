@@ -16,6 +16,7 @@ const getMCPToolsForOllama = () => {
 const chat = async (messages, onChunk) => {
   const tools = getMCPToolsForOllama();
 
+  console.log('Tools provided to Ollama:', tools.map(t => t.function.name));
   // ধাপ ১: Ollama কে message + tools দাও
   const response = await ollama.chat({
     model: process.env.OLLAMA_MODEL || 'llama3:latest',
@@ -23,9 +24,11 @@ const chat = async (messages, onChunk) => {
     tools,
     stream: false
   });
+  console.log('Ollama response:', response.message);
 
   const message = response.message;
 
+  console.log('message.tool_calls:', message.tool_calls);
   // ধাপ ২: Tool call দরকার কিনা দেখো
   if (message.tool_calls?.length > 0) {
     const updatedMessages = [...messages, message];
@@ -43,7 +46,9 @@ const chat = async (messages, onChunk) => {
           role: 'tool',
           content: toolResult
         });
+        console.log(`✅ Tool ${toolName} result:`, toolResult);
       } catch (err) {
+        console.log(`❌ Tool call error for ${toolName}:`, err.message);
         updatedMessages.push({
           role: 'tool',
           content: `Error: ${err.message}`
