@@ -1,0 +1,2 @@
+# syftet-ecommerce-mcp
+
