@@ -1,16 +1,41 @@
 version: '3.8'
-services:
-  postgres:
-    image: postgres:15
-    container_name: todo_postgres
-    environment:
-      POSTGRES_DB: tododb
-      POSTGRES_USER: todouser
-      POSTGRES_PASSWORD: todopass
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
 
-volumes:
-  postgres_data:
+services:
+  syftet-mcp:
+    build: ./syftet-ecommerce-mcp
+    container_name: syftcommerce-mcp
+    ports:
+      - "4001:4001"
+    environment:
+      MCP_PORT: 4001
+      SYFTET_API_BASE_URL: ${SYFTET_API_BASE_URL:-http://host.docker.internal:8000/api}
+      SYFTET_API_KEY: ${SYFTET_API_KEY:-}
+      LOG_LEVEL: info
+    restart: unless-stopped
+
+  chat-backend:
+    build: ./chat-demo/backend
+    container_name: syftcommerce-chat-backend
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+      AI_BASE_URL: ${AI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai/}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-gemini-2.0-flash}
+      MCP_SERVER_URL: http://syftet-mcp:4001
+    depends_on:
+      - syftet-mcp
+    restart: unless-stopped
+
+  chat-frontend:
+    build:
+      context: ./chat-demo/frontend
+      args:
+        VITE_API_URL: /api
+    container_name: syftcommerce-chat-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - chat-backend
+    restart: unless-stopped

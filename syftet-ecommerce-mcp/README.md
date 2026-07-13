@@ -21,7 +21,7 @@ And the assistant responds naturally — searching products, managing carts, che
 
 ## How It Works (for the Ecommerce Platform)
 
-```
+```flow
 Customer's Browser
        │
        ├── Syftet Chat Widget (React, embed once)
@@ -36,7 +36,7 @@ Customer's Browser
        └── Their Existing Ecom API (untouched)
 ```
 
-### Integration effort for the developer:
+### Integration effort for the developer
 
 | Step | What they do |
 | --- | --- |
@@ -54,7 +54,7 @@ Customer's Browser
 
 We sell/license the MCP server package to individual ecommerce platforms. They run it on their own infrastructure.
 
-```
+```flow
 Their Infrastructure
    ├── Chat Widget (from our package)
    ├── Orchestrator + LLM (Ollama or OpenAI)
@@ -75,7 +75,7 @@ Their Infrastructure
 
 We run the MCP server on our end as a multi-tenant SaaS. The ecommerce platform gives us their API config (endpoint URL, auth key), embeds the chat widget on their website, and it works.
 
-```
+```flow
 Their Storefront
    │  embed chat widget (CDN script)
    ▼
@@ -103,7 +103,7 @@ Our Cloud (multi-tenant SaaS)
 
 ## Architecture
 
-```
+```flow
 ┌──────────────────────────────────────────────────┐
 │              SyftCommerce MCP Server              │
 │                                                   │
@@ -151,7 +151,7 @@ Our Cloud (multi-tenant SaaS)
 ## Requirements
 
 | Tool | Version |
-|---|---|
+| --- | --- |
 | Node.js | >= 18 |
 | npm | >= 9 |
 | TypeScript | >= 5.5 |
@@ -188,7 +188,7 @@ LOG_LEVEL=info
 npm start
 ```
 
-```
+```output
 SyftCommerce MCP Server
 ======================
 Config: MCP_PORT=4001, LOG_LEVEL=info
@@ -202,16 +202,18 @@ SyftCommerce MCP running on http://localhost:4001
 ## Tools
 
 ### Products (4 tools)
+
 | Tool | Description | Read-only |
-|---|---|---|
+| --- | --- | --- |
 | `search_products` | Search products by keyword | ✅ |
 | `get_product` | Get product details by ID | ✅ |
 | `list_products` | List all products (paginated) | ✅ |
 | `list_categories` | List all categories | ✅ |
 
 ### Cart (7 tools)
+
 | Tool | Description | Destructive |
-|---|---|---|
+| --- | --- | --- |
 | `create_cart` | Create a new empty cart | |
 | `get_cart` | Get cart state | ✅ |
 | `add_item` | Add product to cart | |
@@ -221,15 +223,17 @@ SyftCommerce MCP running on http://localhost:4001
 | `remove_coupon` | Remove coupon | ✅ |
 
 ### Checkout (3 tools)
+
 | Tool | Description | Destructive |
-|---|---|---|
+| --- | --- | --- |
 | `checkout` | Complete checkout → place order | ✅ |
 | `list_shipping_methods` | Available shipping options | ✅ |
 | `list_payment_methods` | Available payment methods | ✅ |
 
 ### Orders (6 tools)
+
 | Tool | Description | Destructive |
-|---|---|---|
+| --- | --- | --- |
 | `create_order` | Create order from cart | ✅ |
 | `get_order` | Get order details | ✅ |
 | `list_orders` | List all orders (paginated) | ✅ |
@@ -247,6 +251,7 @@ SyftCommerce MCP running on http://localhost:4001
 4. All 22 tools work against it immediately — no tool changes needed
 
 The canonical models (`Product`, `Cart`, `Order`, `Customer`) are the contract. The adapter only translates:
+
 - Canonical requests → platform API calls
 - Platform API responses → canonical models
 
@@ -254,7 +259,7 @@ The canonical models (`Product`, `Cart`, `Order`, `Customer`) are the contract. 
 
 ## Project Structure
 
-```
+```files
 src/
 ├── config/           # Zod-validated config loader
 ├── models/           # Canonical commerce models (Product, Cart, Order, Customer)
