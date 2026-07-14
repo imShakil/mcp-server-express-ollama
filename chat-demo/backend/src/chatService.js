@@ -1,24 +1,18 @@
-import { createProvider } from './providers.js';
+import { createProvider } from './providers/registry.js';
 import { callMCPTool, getMCPTools } from './mcpClient.js';
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const promptPath = resolve(__dirname, '../system_prompt.md');
+const systemPrompt = existsSync(promptPath)
+  ? readFileSync(promptPath, 'utf-8')
+  : 'You are SyftCommerce AI Assistant.';
 
 export function createChatService(config) {
   const provider = createProvider(config);
   let history = [];
-
-  const systemPrompt = `You are SyftCommerce AI Assistant — a helpful shopping assistant for an ecommerce platform.
-
-You have access to commerce tools. Use them whenever the user asks about:
-- Products (search, view details, list, categories)
-- Cart (create, add items, remove, update quantity, apply coupon)
-- Checkout (shipping methods, payment methods, place order)
-- Orders (view, list, track, cancel)
-
-Rules:
-- Respond in clean markdown
-- Use **bold** for product names, prices, and important values
-- Be concise and helpful
-- Always confirm before doing destructive actions (checkout, cancel order)
-- If you don't have enough info to call a tool, ask the user`;
 
   async function chat(userMessage, onChunk) {
     const mcpTools = getMCPTools();

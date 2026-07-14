@@ -4,47 +4,51 @@ import { OrderStatus, type Order, type OrderItem } from '../../models/order.js';
 import type { Customer } from '../../models/customer.js';
 import type { Money, Address, Image } from '../../models/shared.js';
 
-export interface SyftetProductResponse {
-  id: number | string;
-  title: string;
-  description?: string;
-  price: number;
-  currency?: string;
-  compare_at_price?: number | null;
-  stock: number;
-  variants?: SyftetVariantResponse[];
-  images?: SyftetImageResponse[];
-  categories?: SyftetCategoryResponse[];
-  brand?: string;
-  rating?: number;
-  tags?: string[];
-  metadata?: Record<string, unknown>;
-  created_at: string;
-  updated_at?: string;
-}
-
-interface SyftetVariantResponse {
-  id: number | string;
-  sku?: string;
-  title: string;
-  price: number;
-  compare_at_price?: number | null;
-  stock: number;
-  attributes?: Record<string, string>;
-}
-
 interface SyftetImageResponse {
-  url: string;
+  url?: string;
+  product_url?: string;
   alt?: string;
-  width?: number;
-  height?: number;
 }
 
 interface SyftetCategoryResponse {
   id: number | string;
   name: string;
   slug: string;
-  parent_id?: number | string | null;
+}
+
+interface SyftetVariantResponse {
+  id: number | string;
+  title?: string;
+  price?: number;
+  stock?: number;
+  sku?: string;
+  attributes?: Record<string, string>;
+}
+
+export interface SyftetProductResponse {
+  id: number | string;
+  name: string;
+  description?: string | null;
+  sale_price: number;
+  discount_price?: string | null;
+  discount?: number;
+  cost_price?: number;
+  preview_image?: string | null;
+  images?: SyftetImageResponse[];
+  categories?: SyftetCategoryResponse[];
+  variants?: SyftetVariantResponse[];
+  total_on_hand: number;
+  slug?: string;
+  code?: string;
+  avg_rating?: number;
+  brand?: string | null;
+  origin?: string;
+  keywords?: string;
+  is_active?: boolean;
+  is_featured?: boolean;
+  weight?: string;
+  unit?: string;
+  size?: string;
 }
 
 export interface SyftetCartResponse {
@@ -68,7 +72,7 @@ interface SyftetCartItemResponse {
   title: string;
   price: number;
   quantity: number;
-  image?: SyftetImageResponse;
+  image?: string;
   total: number;
 }
 
@@ -128,52 +132,72 @@ export interface SyftetCustomerResponse {
   updated_at?: string;
 }
 
-function toMoney(amount: number, currency = 'USD'): Money {
+function toMoney(amount: number, currency = 'BDT'): Money {
   return { amount: Math.round(amount * 100), currency };
 }
 
-function toImage(img: SyftetImageResponse): Image {
-  return { url: img.url, alt: img.alt, width: img.width, height: img.height };
+function absUrl(path: string): string {
+  return path.startsWith('http') ? path : `https://syfmart.com${path}`;
 }
 
-export function mapProduct(raw: SyftetProductResponse): Product {
-  return {
-    id: String(raw.id),
-    title: raw.title,
-    description: raw.description,
-    price: toMoney(raw.price, raw.currency),
-    compareAtPrice: raw.compare_at_price ? toMoney(raw.compare_at_price, raw.currency) : undefined,
-    inventory: raw.stock,
-    variants: raw.variants?.map(mapVariant),
-    images: raw.images?.map(toImage),
-    categories: raw.categories?.map(mapCategory),
-    brand: raw.brand,
-    rating: raw.rating,
-    tags: raw.tags,
-    metadata: raw.metadata,
-    createdAt: raw.created_at,
-    updatedAt: raw.updated_at,
-  };
+function mapImage(img: SyftetImageResponse): Image {
+  const src = img.product_url ?? img.url;
+  return { url: src ? absUrl(src) : '', alt: img.alt ?? undefined };
+}
+
+function mapCategory(c: SyftetCategoryResponse): ProductCategory {
+  return { id: String(c.id), name: c.name, slug: c.slug };
 }
 
 function mapVariant(v: SyftetVariantResponse): ProductVariant {
   return {
     id: String(v.id),
     sku: v.sku,
-    title: v.title,
-    price: toMoney(v.price),
-    compareAtPrice: v.compare_at_price ? toMoney(v.compare_at_price) : undefined,
-    inventory: v.stock,
+    title: v.title ?? `Variant ${v.id}`,
+    price: toMoney(v.price ?? 0),
+    inventory: v.stock ?? 0,
     attributes: v.attributes,
   };
 }
 
-function mapCategory(c: SyftetCategoryResponse): ProductCategory {
+export function mapProduct(raw: SyftetProductResponse): Product {
+  const tags = raw.keywords
+    ? raw.keywords.split(',').map(k => k.trim()).filter(Boolean)
+    : undefined;
+  const now = new Date().toISOString();
+
+  let images: Image[] | undefined;
+  if (raw.images?.length) {
+    images = raw.images.map(mapImage);
+  } else if (raw.preview_image) {
+    images = [{ url: absUrl(raw.preview_image) }];
+  }
+
   return {
-    id: String(c.id),
-    name: c.name,
-    slug: c.slug,
-    parentId: c.parent_id ? String(c.parent_id) : undefined,
+    id: String(raw.id),
+    title: raw.name,
+    description: raw.description ?? undefined,
+    price: toMoney(raw.sale_price),
+    compareAtPrice: raw.cost_price ? toMoney(raw.cost_price) : undefined,
+    inventory: raw.total_on_hand,
+    images,
+    variants: raw.variants?.length ? raw.variants.map(mapVariant) : undefined,
+    categories: raw.categories?.length ? raw.categories.map(mapCategory) : undefined,
+    brand: raw.brand ?? raw.origin,
+    rating: raw.avg_rating,
+    tags,
+    metadata: {
+      code: raw.code,
+      slug: raw.slug,
+      weight: raw.weight,
+      unit: raw.unit,
+      size: raw.size,
+      discount: raw.discount,
+      discount_price: raw.discount_price,
+      is_featured: raw.is_featured,
+    },
+    createdAt: now,
+    updatedAt: now,
   };
 }
 
@@ -202,7 +226,7 @@ function mapCartItem(i: SyftetCartItemResponse): CartItem {
     title: i.title,
     price: toMoney(i.price),
     quantity: i.quantity,
-    image: i.image ? toImage(i.image) : undefined,
+    image: i.image ? mapImage({ url: i.image }) : undefined,
     total: toMoney(i.total),
   };
 }

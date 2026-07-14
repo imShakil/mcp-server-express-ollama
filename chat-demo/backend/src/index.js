@@ -7,9 +7,12 @@ import { createChatService } from './chatService.js';
 dotenv.config();
 
 const config = {
+  AI_PROVIDER: process.env.AI_PROVIDER || 'openai',
   AI_BASE_URL: process.env.AI_BASE_URL || 'https://api.openai.com/v1',
   AI_API_KEY: process.env.AI_API_KEY || '',
   AI_MODEL: process.env.AI_MODEL || 'gpt-4o',
+  OLLAMA_HOST: process.env.OLLAMA_HOST || 'http://localhost:11434',
+  GROQ_API_KEY: process.env.GROQ_API_KEY || '',
   MCP_SERVER_URL: process.env.MCP_SERVER_URL || 'http://localhost:4001',
   PORT: parseInt(process.env.PORT || '4000', 10),
 };
@@ -65,8 +68,14 @@ async function start() {
   app.listen(config.PORT, () => {
     console.log(`\nSyftCommerce Chat Demo Backend`);
     console.log(`===============================`);
+    const apiUrl = config.AI_PROVIDER === 'ollama'
+      ? config.OLLAMA_HOST
+      : config.AI_PROVIDER === 'groq'
+        ? 'https://api.groq.com'
+        : config.AI_BASE_URL;
+    console.log(`Provider: ${config.AI_PROVIDER}`);
     console.log(`Model: ${config.AI_MODEL}`);
-    console.log(`API: ${config.AI_BASE_URL}`);
+    console.log(`Endpoint: ${apiUrl}`);
     console.log(`MCP: ${config.MCP_SERVER_URL}`);
     console.log(`Server: http://localhost:${config.PORT}`);
     console.log(`Chat: POST http://localhost:${config.PORT}/chat\n`);

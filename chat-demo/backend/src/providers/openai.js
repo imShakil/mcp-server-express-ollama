@@ -1,10 +1,6 @@
 import OpenAI from 'openai';
 
-export function createProvider(config) {
-  return new OpenAIProvider(config);
-}
-
-class OpenAIProvider {
+export class OpenAIProvider {
   constructor(config) {
     this.client = new OpenAI({
       baseURL: config.AI_BASE_URL,
