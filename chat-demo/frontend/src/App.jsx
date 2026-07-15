@@ -31,7 +31,7 @@ function App() {
     setInput('');
     setLoading(true);
 
-    const assistantMsg = { role: 'assistant', content: '' };
+    const assistantMsg = { role: 'assistant', content: '', thinking: '' };
     setMessages(prev => [...prev, assistantMsg]);
 
     try {
@@ -63,6 +63,19 @@ function App() {
                   ...updated[updated.length - 1],
                   content: updated[updated.length - 1].content + data.chunk,
                 };
+                return updated;
+              });
+            }
+            if (data.thinking) {
+              setMessages(prev => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                if (last.role === 'assistant') {
+                  updated[updated.length - 1] = {
+                    ...last,
+                    thinking: (last.thinking || '') + data.thinking,
+                  };
+                }
                 return updated;
               });
             }
@@ -136,7 +149,15 @@ function App() {
             <div className="avatar">{msg.role === 'user' ? '👤' : '🤖'}</div>
             <div className="bubble">
               {msg.role === 'assistant' ? (
-                <ReactMarkdown>{msg.content || (loading && i === messages.length - 1 ? '...' : '')}</ReactMarkdown>
+                <>
+                  {msg.thinking && (
+                    <details className="thinking">
+                      <summary>🤔 Thinking</summary>
+                      <ReactMarkdown>{msg.thinking}</ReactMarkdown>
+                    </details>
+                  )}
+                  <ReactMarkdown>{msg.content || (loading && i === messages.length - 1 ? '...' : '')}</ReactMarkdown>
+                </>
               ) : (
                 msg.content
               )}

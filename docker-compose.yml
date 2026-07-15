@@ -6,10 +6,13 @@ x-syftet-common-env: &syftet-common-env
   SYFTET_API_KEY: ${SYFTET_API_KEY:-}
   LOG_LEVEL: info
   AI_PROVIDER: ${AI_PROVIDER:-ollama}
-  AI_API_KEY: ${AI_API_KEY:-}
-  AI_MODEL: ${AI_MODEL:-llama3.1:8b}
+  GROQ_API_KEY: ${GROQ_API_KEY:-your-groq-api-key-here}
+  AI_MODEL: ${AI_MODEL:-gemma4:cloud}
+  AI_TEMPERATURE: ${AI_TEMPERATURE:-}
+  AI_MAX_TOKENS: ${AI_MAX_TOKENS:-}
+  AI_TOP_P: ${AI_TOP_P:-}
   OLLAMA_HOST: ${OLLAMA_HOST:-http://192.168.68.107:11434}
-  GROQ_API_KEY: ${GROQ_API_KEY:-}
+  AI_REASONING_EFFORT: ${AI_REASONING_EFFORT:-}
 
 
 

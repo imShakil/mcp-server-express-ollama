@@ -6,6 +6,21 @@ export class GroqProvider {
       apiKey: config.GROQ_API_KEY,
     });
     this.model = config.AI_MODEL;
+    this.temperature = config.AI_TEMPERATURE != null ? config.AI_TEMPERATURE : undefined;
+    this.maxTokens = config.AI_MAX_TOKENS || config.AI_MAX_COMPLETION_TOKENS;
+    this.topP = config.AI_TOP_P;
+    this.reasoningEffort = config.AI_REASONING_EFFORT;
+    this.stop = config.AI_STOP;
+  }
+
+  get extraParams() {
+    const params = {};
+    if (this.temperature !== undefined) params.temperature = this.temperature;
+    if (this.maxTokens) params.max_completion_tokens = this.maxTokens;
+    if (this.topP) params.top_p = this.topP;
+    if (this.reasoningEffort) params.reasoning_effort = this.reasoningEffort;
+    if (this.stop !== undefined) params.stop = this.stop;
+    return params;
   }
 
   buildMessages(systemPrompt, history, userMessage) {
@@ -33,6 +48,7 @@ export class GroqProvider {
       messages,
       tools: tools.length > 0 ? tools : undefined,
       tool_choice: 'auto',
+      ...this.extraParams,
     });
     return response.choices[0].message;
   }
@@ -42,6 +58,7 @@ export class GroqProvider {
       model: this.model,
       messages,
       stream: true,
+      ...this.extraParams,
     });
   }
 
@@ -55,6 +72,18 @@ export class GroqProvider {
       name: tc.function.name,
       args: JSON.parse(tc.function.arguments),
     }));
+  }
+
+  buildAssistantToolCallMessage(tc, text) {
+    return {
+      role: 'assistant',
+      content: text || null,
+      tool_calls: [{
+        id: tc.id,
+        type: 'function',
+        function: { name: tc.name, arguments: JSON.stringify(tc.args) },
+      }],
+    };
   }
 
   buildToolResultMessage(toolCall, result) {

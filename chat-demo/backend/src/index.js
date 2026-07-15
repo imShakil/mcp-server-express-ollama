@@ -11,6 +11,11 @@ const config = {
   AI_BASE_URL: process.env.AI_BASE_URL || 'https://api.openai.com/v1',
   AI_API_KEY: process.env.AI_API_KEY || '',
   AI_MODEL: process.env.AI_MODEL || 'gpt-4o',
+  AI_TEMPERATURE: process.env.AI_TEMPERATURE ? parseFloat(process.env.AI_TEMPERATURE) : undefined,
+  AI_MAX_TOKENS: process.env.AI_MAX_TOKENS ? parseInt(process.env.AI_MAX_TOKENS, 10) : undefined,
+  AI_TOP_P: process.env.AI_TOP_P ? parseFloat(process.env.AI_TOP_P) : undefined,
+  AI_REASONING_EFFORT: process.env.AI_REASONING_EFFORT,
+  AI_STOP: process.env.AI_STOP,
   OLLAMA_HOST: process.env.OLLAMA_HOST || 'http://localhost:11434',
   GROQ_API_KEY: process.env.GROQ_API_KEY || '',
   MCP_SERVER_URL: process.env.MCP_SERVER_URL || 'http://localhost:4001',
@@ -36,9 +41,10 @@ app.post('/chat', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
 
   try {
-    await chatService.chat(message, (chunk) => {
-      res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
-    });
+    await chatService.chat(message,
+      (chunk) => { res.write(`data: ${JSON.stringify({ chunk })}\n\n`); },
+      (chunk) => { res.write(`data: ${JSON.stringify({ thinking: chunk })}\n\n`); },
+    );
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
   } catch (err) {
     console.error('Chat error:', err);

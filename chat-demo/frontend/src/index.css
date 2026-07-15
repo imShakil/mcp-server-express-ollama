@@ -194,6 +194,31 @@ header {
   margin-bottom: 4px;
 }
 
+.bubble details.thinking {
+  margin-bottom: 10px;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.bubble details.thinking summary {
+  cursor: pointer;
+  color: #666;
+  font-weight: 600;
+  font-size: 12px;
+  user-select: none;
+}
+
+.bubble details.thinking summary:hover {
+  color: #333;
+}
+
+.bubble details.thinking .bubble p {
+  margin-bottom: 4px;
+}
+
 .bubble strong {
   font-weight: 600;
 }

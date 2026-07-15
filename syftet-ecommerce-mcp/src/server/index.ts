@@ -28,7 +28,6 @@ type ToolHandler = (toolName: string, args: Record<string, unknown>) => Promise<
 } | null>;
 
 export class SyftCommerceServer {
-  private mcpServer: Server;
   private handlers: ToolHandler[] = [];
   private toolDefinitions: ToolDefinition[] = [];
   private transportApp!: ReturnType<typeof createTransportApp>;
@@ -37,13 +36,7 @@ export class SyftCommerceServer {
     private provider: ProviderInterface,
     private port: number = 4001,
   ) {
-    this.mcpServer = new Server(
-      { name: 'syftcommerce-mcp', version: '0.1.0' },
-      { capabilities: { tools: {} } },
-    );
-
     this.registerAllTools();
-    this.setupRequestHandlers();
   }
 
   private registerAllTools(): void {
@@ -62,8 +55,13 @@ export class SyftCommerceServer {
     ];
   }
 
-  private setupRequestHandlers(): void {
-    this.mcpServer.setRequestHandler(ListToolsRequestSchema, async () => {
+  private createServer(): Server {
+    const server = new Server(
+      { name: 'syftcommerce-mcp', version: '0.1.0' },
+      { capabilities: { tools: {} } },
+    );
+
+    server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
         tools: this.toolDefinitions.map((def) => ({
           name: def.name,
@@ -74,7 +72,7 @@ export class SyftCommerceServer {
       };
     });
 
-    this.mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
+    server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
       const parsedArgs = (args ?? {}) as Record<string, unknown>;
 
@@ -85,11 +83,13 @@ export class SyftCommerceServer {
 
       throw new Error(`Unknown tool: ${name}`);
     });
+
+    return server;
   }
 
   async start(): Promise<void> {
     this.transportApp = createTransportApp(this.port);
-    this.transportApp.start(this.mcpServer);
+    this.transportApp.start(() => this.createServer());
 
     console.log(`Provider: ${this.provider.name}`);
     console.log(`Capabilities: ${[...this.provider.capabilities].join(', ')}`);
@@ -98,6 +98,5 @@ export class SyftCommerceServer {
 
   async stop(): Promise<void> {
     this.transportApp.stop();
-    await this.mcpServer.close();
   }
 }

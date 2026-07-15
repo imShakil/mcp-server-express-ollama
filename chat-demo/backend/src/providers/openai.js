@@ -58,6 +58,18 @@ export class OpenAIProvider {
     }));
   }
 
+  buildAssistantToolCallMessage(tc, text) {
+    return {
+      role: 'assistant',
+      content: text || null,
+      tool_calls: [{
+        id: tc.id,
+        type: 'function',
+        function: { name: tc.name, arguments: JSON.stringify(tc.args) },
+      }],
+    };
+  }
+
   buildToolResultMessage(toolCall, result) {
     return {
       role: 'tool',

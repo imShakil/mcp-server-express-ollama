@@ -3,27 +3,35 @@ import cors from 'cors';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 
+export type ServerFactory = () => Server;
+
 export function createTransportApp(port: number): {
-  app: express.Express;
-  start: (mcpServer: Server) => void;
+  start: (factory: ServerFactory) => void;
   stop: () => void;
 } {
   const app = express();
   app.use(cors());
 
   const transports: Record<string, SSEServerTransport> = {};
-  let mcpServer: Server | null = null;
+  const servers: Server[] = [];
+  let httpServer: ReturnType<typeof app.listen> | null = null;
 
   app.get('/sse', async (req, res) => {
     const transport = new SSEServerTransport('/messages', res);
     transports[transport.sessionId] = transport;
 
+    const server = createServer();
+    servers.push(server);
+
     res.on('close', () => {
       delete transports[transport.sessionId];
+      server.close();
+      const idx = servers.indexOf(server);
+      if (idx !== -1) servers.splice(idx, 1);
       console.log(`Client disconnected: ${transport.sessionId}`);
     });
 
-    await mcpServer?.connect(transport);
+    await server.connect(transport);
     console.log(`Client connected: ${transport.sessionId}`);
   });
 
@@ -42,10 +50,10 @@ export function createTransportApp(port: number): {
     res.json({ status: 'ok', sessions: Object.keys(transports).length });
   });
 
-  let httpServer: ReturnType<typeof app.listen> | null = null;
+  let createServer: ServerFactory = () => { throw new Error('Server not started') };
 
-  const start = (server: Server) => {
-    mcpServer = server;
+  const start = (factory: ServerFactory) => {
+    createServer = factory;
     httpServer = app.listen(port, () => {
       console.log(`SyftCommerce MCP running on http://localhost:${port}`);
       console.log(`  SSE: http://localhost:${port}/sse`);
@@ -54,8 +62,12 @@ export function createTransportApp(port: number): {
   };
 
   const stop = () => {
+    for (const server of servers) {
+      server.close();
+    }
+    servers.length = 0;
     httpServer?.close();
   };
 
-  return { app, start, stop };
+  return { start, stop };
 }

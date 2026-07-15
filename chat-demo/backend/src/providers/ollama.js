@@ -53,6 +53,16 @@ export class OllamaProvider {
     }));
   }
 
+  buildAssistantToolCallMessage(tc, text) {
+    return {
+      role: 'assistant',
+      content: text || null,
+      tool_calls: [{
+        function: { name: tc.name, arguments: tc.args },
+      }],
+    };
+  }
+
   buildToolResultMessage(toolCall, result) {
     return {
       role: 'tool',
